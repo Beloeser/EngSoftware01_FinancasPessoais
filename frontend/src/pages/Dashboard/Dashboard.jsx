@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../../services/api'
+import { useCategories } from '../../hooks/useCategories'
 import Button from '../../components/Button/Button'
 import Card from '../../components/Card/Card'
 import {
@@ -19,12 +20,29 @@ import {
   ActionButton,
 } from './Styles'
 
-const EMPTY_FORM = { description: '', amount: '', type: 'income', date: '' }
+const EMPTY_FORM = { description: '', amount: '', type: 'income', date: '', category: '' }
+const CAT_MAP_KEY = 'transactionCategories'
+
+function loadCatMap() {
+  try {
+    return JSON.parse(localStorage.getItem(CAT_MAP_KEY)) || {}
+  } catch {
+    return {}
+  }
+}
+
+function saveCatMap(map) {
+  localStorage.setItem(CAT_MAP_KEY, JSON.stringify(map))
+}
 
 export default function Dashboard() {
+  const { categories } = useCategories()
   const [form, setForm] = useState(EMPTY_FORM)
   const [fieldError, setFieldError] = useState('')
   const [transactions, setTransactions] = useState([])
+  const [editingId, setEditingId] = useState(null)
+  const [confirmingId, setConfirmingId] = useState(null)
+  const [catMap, setCatMap] = useState(loadCatMap)
 
   useEffect(() => {
     fetchTransactions()
@@ -37,7 +55,30 @@ export default function Dashboard() {
 
   async function handleDelete(id) {
     await api.delete(`/transactions/${id}`)
+    const updated = { ...catMap }
+    delete updated[id]
+    saveCatMap(updated)
+    setCatMap(updated)
+    setConfirmingId(null)
     fetchTransactions()
+  }
+
+  function handleEdit(t) {
+    setEditingId(t.id)
+    setForm({
+      description: t.description,
+      amount: String(t.amount),
+      type: t.type,
+      date: t.date,
+      category: catMap[t.id] || '',
+    })
+    setFieldError('')
+  }
+
+  function handleCancelEdit() {
+    setEditingId(null)
+    setForm(EMPTY_FORM)
+    setFieldError('')
   }
 
   function handleChange(e) {
@@ -53,12 +94,27 @@ export default function Dashboard() {
       return
     }
 
-    await api.post('/transactions', {
+    const payload = {
       description: form.description,
       amount: parseFloat(form.amount),
       type: form.type,
       date: form.date,
-    })
+    }
+
+    if (editingId) {
+      await api.put(`/transactions/${editingId}`, payload)
+      const updated = { ...catMap, [editingId]: form.category }
+      saveCatMap(updated)
+      setCatMap(updated)
+      setEditingId(null)
+    } else {
+      const { data } = await api.post('/transactions', payload)
+      if (form.category && data?.id) {
+        const updated = { ...catMap, [data.id]: form.category }
+        saveCatMap(updated)
+        setCatMap(updated)
+      }
+    }
 
     setForm(EMPTY_FORM)
     fetchTransactions()
@@ -78,7 +134,7 @@ export default function Dashboard() {
       <PageTitle>Minhas Finanças</PageTitle>
 
       <Card>
-        <FormTitle>Nova Transação</FormTitle>
+        <FormTitle>{editingId ? 'Editar Transação' : 'Nova Transação'}</FormTitle>
         <form onSubmit={handleSubmit}>
           <Input
             name="description"
@@ -106,8 +162,17 @@ export default function Dashboard() {
             value={form.date}
             onChange={handleChange}
           />
+          <Select name="category" value={form.category} onChange={handleChange}>
+            <option value="">Categoria (opcional)</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </Select>
           {fieldError && <ErrorMessage>{fieldError}</ErrorMessage>}
-          <Button type="submit">Salvar</Button>
+          <Button type="submit">{editingId ? 'Atualizar' : 'Salvar'}</Button>
+          {editingId && (
+            <Button type="button" onClick={handleCancelEdit}>Cancelar</Button>
+          )}
         </form>
       </Card>
 
@@ -123,6 +188,7 @@ export default function Dashboard() {
                 <TypeBadge $type={t.type}>
                   {t.type === 'income' ? 'Entrada' : 'Saída'}
                 </TypeBadge>
+                {catMap[t.id] && <> &middot; {catMap[t.id]}</>}
               </TransactionMeta>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -130,9 +196,23 @@ export default function Dashboard() {
                 {t.type === 'expense' ? '- ' : '+ '}
                 {formatCurrency(t.amount)}
               </TransactionAmount>
-              <ActionButton type="button" onClick={() => handleDelete(t.id)}>
-                Remover
+              <ActionButton type="button" data-action="edit" onClick={() => handleEdit(t)}>
+                Editar
               </ActionButton>
+              {confirmingId === t.id ? (
+                <>
+                  <ActionButton type="button" data-action="confirm" onClick={() => handleDelete(t.id)}>
+                    Confirmar
+                  </ActionButton>
+                  <ActionButton type="button" onClick={() => setConfirmingId(null)}>
+                    Cancelar
+                  </ActionButton>
+                </>
+              ) : (
+                <ActionButton type="button" onClick={() => setConfirmingId(t.id)}>
+                  Remover
+                </ActionButton>
+              )}
             </div>
           </TransactionItem>
         ))}

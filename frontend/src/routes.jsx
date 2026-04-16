@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
-import { Home, Login, Dashboard, Profile } from './pages'
+import { Home, Login, Dashboard, Profile, Categories } from './pages'
 
 function PrivateRoute({ children }) {
   const { user } = useAuth()
@@ -14,6 +14,7 @@ export default function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
       <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+      <Route path="/categories" element={<PrivateRoute><Categories /></PrivateRoute>} />
     </Routes>
   )
 }

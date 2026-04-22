@@ -112,4 +112,7 @@ export const ActionButton = styled.button`
   cursor: pointer;
   padding: 0;
   &:hover { color: #c0392b; }
+  &[data-action="edit"]:hover { color: #0f3460; }
+  &[data-action="confirm"] { color: #c0392b; }
+  &[data-action="confirm"]:hover { color: #922b21; }
 `

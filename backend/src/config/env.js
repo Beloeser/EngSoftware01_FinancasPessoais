@@ -1,4 +1,4 @@
-import 'dotenv/config'
+import "dotenv/config";
 
 export const env = {
   port: process.env.PORT || 5000,
@@ -10,4 +10,4 @@ export const env = {
     pass: process.env.DB_PASS,
   },
   jwtSecret: process.env.JWT_SECRET,
-}
+};

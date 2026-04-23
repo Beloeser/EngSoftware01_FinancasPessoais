@@ -7,5 +7,13 @@ export const StyledButton = styled.button`
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  &:hover { background: #1a5276; }
+
+  &:hover:not(:disabled) {
+    background: #1a5276;
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
 `

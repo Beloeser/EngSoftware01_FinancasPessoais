@@ -2,25 +2,42 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import Button from '../../components/Button/Button'
-import { Container, Form, Title, Input, ErrorMessage, FooterText, AuthLink } from './Styles'
+import {
+  Container,
+  Form,
+  Title,
+  Input,
+  ErrorMessage,
+  FooterText,
+  AuthLink,
+} from './Styles.js'
 
-export default function Login() {
-  const { login } = useAuth()
+export default function Register() {
+  const { register } = useAuth()
   const navigate = useNavigate()
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+
+    if (password !== confirmPassword) {
+      setError('As senhas não coincidem.')
+      return
+    }
+
     setIsSubmitting(true)
+
     try {
-      await login(email, password)
+      await register(name, email, password)
       navigate('/dashboard', { replace: true })
     } catch (err) {
-      setError(err.response?.data?.message || 'Credenciais inválidas. Verifique seu e-mail e senha.')
+      setError(err.response?.data?.message || 'Não foi possível criar sua conta.')
     } finally {
       setIsSubmitting(false)
     }
@@ -29,7 +46,14 @@ export default function Login() {
   return (
     <Container>
       <Form onSubmit={handleSubmit}>
-        <Title>Entrar</Title>
+        <Title>Criar conta</Title>
+        <Input
+          type="text"
+          placeholder="Nome"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
         <Input
           type="email"
           placeholder="E-mail"
@@ -42,14 +66,23 @@ export default function Login() {
           placeholder="Senha"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          minLength={6}
+          required
+        />
+        <Input
+          type="password"
+          placeholder="Confirmar senha"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          minLength={6}
           required
         />
         {error && <ErrorMessage>{error}</ErrorMessage>}
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Entrando...' : 'Entrar'}
+          {isSubmitting ? 'Criando conta...' : 'Criar conta'}
         </Button>
         <FooterText>
-          Ainda não tem conta? <AuthLink to="/register">Criar cadastro</AuthLink>
+          Já tem conta? <AuthLink to="/login">Entrar</AuthLink>
         </FooterText>
       </Form>
     </Container>

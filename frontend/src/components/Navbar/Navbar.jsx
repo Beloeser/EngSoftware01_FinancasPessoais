@@ -26,6 +26,7 @@ export default function Navbar() {
         <Brand>Finanças Pessoais</Brand>
         <Links>
           <LinkItem to="/dashboard">Dashboard</LinkItem>
+          <LinkItem to="/visao-geral">Visão Geral</LinkItem>
           <LinkItem to="/categories">Categorias</LinkItem>
           <LinkItem to="/profile">Perfil</LinkItem>
         </Links>

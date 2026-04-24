@@ -49,7 +49,7 @@ export default function Login() {
           {isSubmitting ? 'Entrando...' : 'Entrar'}
         </Button>
         <FooterText>
-          Ainda não tem conta? <AuthLink to="/register">Criar cadastro</AuthLink>
+          Ainda não tem conta? <AuthLink to="/">Criar cadastro</AuthLink>
         </FooterText>
       </Form>
     </Container>

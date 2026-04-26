@@ -6,8 +6,9 @@ const router = Router();
 
 router.use(authMiddleware);
 
-// A rota /summary precisa obrigatoriamente vir antes do /:id
+// A rota /summary e a /export/pdf precisam obrigatoriamente vir antes do /:id
 router.get("/summary", transactionController.getSummary);
+router.get("/export/pdf", transactionController.exportPDF);
 
 router.get("/", transactionController.getAll);
 router.post("/", transactionController.create);

@@ -3,8 +3,20 @@ import { transactionService } from "../services/transactionService.js";
 export const transactionController = {
   async getAll(req, res, next) {
     try {
-      const transactions = await transactionService.findAllByUser(req.userId);
+      const transactions = await transactionService.findAllByUser(
+        req.userId,
+        req.query,
+      );
       res.json(transactions);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async getSummary(req, res, next) {
+    try {
+      const summary = await transactionService.getSummary(req.userId);
+      res.json(summary);
     } catch (err) {
       next(err);
     }

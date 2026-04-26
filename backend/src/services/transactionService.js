@@ -1,14 +1,24 @@
 import { Transaction } from "../models/index.js";
 
 export const transactionService = {
-  findAllByUser: (userId) => Transaction.findAll({ where: { userId } }),
-
-  async create(data) {
-    if (!data.amount || data.amount <= 0) {
-      throw new Error("O valor da transação deve ser maior que zero.");
-    }
-    return Transaction.create(data);
+  async findAllByUser(userId) {
+    return await Transaction.findAll({ where: { userId } });
   },
 
-  delete: (id, userId) => Transaction.destroy({ where: { id, userId } }),
+  async create(data) {
+    return await Transaction.create(data);
+  },
+
+  async delete(id, userId) {
+    const transaction = await Transaction.findOne({ where: { id, userId } });
+    if (!transaction) throw new Error("NOT_FOUND");
+    await transaction.destroy();
+  },
+
+  async update(id, userId, data) {
+    const transaction = await Transaction.findOne({ where: { id, userId } });
+    if (!transaction) throw new Error("NOT_FOUND");
+    await transaction.update(data);
+    return transaction;
+  },
 };

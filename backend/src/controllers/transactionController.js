@@ -27,6 +27,29 @@ export const transactionController = {
       await transactionService.delete(req.params.id, req.userId);
       res.status(204).send();
     } catch (err) {
+      if (err.message === "NOT_FOUND") {
+        return res.status(404).json({ message: "Transação não encontrada." });
+      }
+      next(err);
+    }
+  },
+
+  async update(req, res, next) {
+    try {
+      const updatedTransaction = await transactionService.update(
+        req.params.id,
+        req.userId,
+        req.body,
+      );
+      res.status(200).json(updatedTransaction);
+    } catch (err) {
+      if (err.message === "NOT_FOUND") {
+        return res
+          .status(404)
+          .json({
+            message: "Transação não encontrada ou não pertence a você.",
+          });
+      }
       next(err);
     }
   },

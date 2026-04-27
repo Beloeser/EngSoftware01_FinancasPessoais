@@ -1,4 +1,5 @@
 import { transactionService } from "../services/transactionService.js";
+import { pdfService } from "../services/pdfService.js";
 
 export const transactionController = {
   async getAll(req, res, next) {
@@ -56,12 +57,32 @@ export const transactionController = {
       res.status(200).json(updatedTransaction);
     } catch (err) {
       if (err.message === "NOT_FOUND") {
-        return res
-          .status(404)
-          .json({
-            message: "Transação não encontrada ou não pertence a você.",
-          });
+        return res.status(404).json({
+          message: "Transação não encontrada ou não pertence a você.",
+        });
       }
+      next(err);
+    }
+  },
+
+  async exportPDF(req, res, next) {
+    try {
+      const transactions = await transactionService.findAllByUser(
+        req.userId,
+        req.query,
+      );
+
+      const pdfBuffer =
+        await pdfService.generateTransactionReport(transactions);
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=relatorio-transacoes.pdf",
+      );
+
+      res.send(pdfBuffer);
+    } catch (err) {
       next(err);
     }
   },

@@ -3,8 +3,20 @@ import { transactionService } from "../services/transactionService.js";
 export const transactionController = {
   async getAll(req, res, next) {
     try {
-      const transactions = await transactionService.findAllByUser(req.userId);
+      const transactions = await transactionService.findAllByUser(
+        req.userId,
+        req.query,
+      );
       res.json(transactions);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async getSummary(req, res, next) {
+    try {
+      const summary = await transactionService.getSummary(req.userId);
+      res.json(summary);
     } catch (err) {
       next(err);
     }
@@ -27,6 +39,29 @@ export const transactionController = {
       await transactionService.delete(req.params.id, req.userId);
       res.status(204).send();
     } catch (err) {
+      if (err.message === "NOT_FOUND") {
+        return res.status(404).json({ message: "Transação não encontrada." });
+      }
+      next(err);
+    }
+  },
+
+  async update(req, res, next) {
+    try {
+      const updatedTransaction = await transactionService.update(
+        req.params.id,
+        req.userId,
+        req.body,
+      );
+      res.status(200).json(updatedTransaction);
+    } catch (err) {
+      if (err.message === "NOT_FOUND") {
+        return res
+          .status(404)
+          .json({
+            message: "Transação não encontrada ou não pertence a você.",
+          });
+      }
       next(err);
     }
   },

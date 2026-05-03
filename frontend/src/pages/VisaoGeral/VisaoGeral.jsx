@@ -31,10 +31,26 @@ import {
   EmptyMessage,
 } from './Styles'
 
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement)
+ChartJS.register(
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement
+)
 
 const CAT_MAP_KEY = 'transactionCategories'
-const PIE_COLORS = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF']
+const PIE_COLORS = [
+  '#FF6384',
+  '#36A2EB',
+  '#FFCE56',
+  '#4BC0C0',
+  '#9966FF',
+  '#FF9F40',
+  '#C9CBCF',
+]
 
 function loadCatMap() {
   try {
@@ -45,23 +61,38 @@ function loadCatMap() {
 }
 
 function formatCurrency(value) {
-  return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  return Number(value).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  })
 }
 
 export default function VisaoGeral() {
   const { categories } = useCategories()
   const [transactions, setTransactions] = useState([])
+
   const [filterMonth, setFilterMonth] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
+  const [filterMinValue, setFilterMinValue] = useState('')
+  const [filterMaxValue, setFilterMaxValue] = useState('')
+
   const catMap = loadCatMap()
 
   useEffect(() => {
     api.get('/transactions').then(({ data }) => setTransactions(data))
   }, [])
 
+  const parseValue = (v) => Number(String(v).replace(',', '.'))
+
   const filtered = transactions.filter((t) => {
+    const amount = Number(t.amount)
+
     if (filterMonth && !t.date.startsWith(filterMonth)) return false
     if (filterCategory && (catMap[t.id] || '') !== filterCategory) return false
+
+    if (filterMinValue && amount < parseValue(filterMinValue)) return false
+    if (filterMaxValue && amount > parseValue(filterMaxValue)) return false
+
     return true
   })
 
@@ -80,7 +111,8 @@ export default function VisaoGeral() {
     .filter((t) => t.type === 'expense')
     .forEach((t) => {
       const cat = catMap[t.id] || 'Sem categoria'
-      expensesByCategory[cat] = (expensesByCategory[cat] || 0) + Number(t.amount)
+      expensesByCategory[cat] =
+        (expensesByCategory[cat] || 0) + Number(t.amount)
     })
 
   const pieData = {
@@ -96,9 +128,12 @@ export default function VisaoGeral() {
   const monthTotals = {}
   transactions.forEach((t) => {
     const month = t.date.substring(0, 7)
-    if (!monthTotals[month]) monthTotals[month] = { income: 0, expense: 0 }
+    if (!monthTotals[month]) {
+      monthTotals[month] = { income: 0, expense: 0 }
+    }
     monthTotals[month][t.type] += Number(t.amount)
   })
+
   const sortedMonths = Object.keys(monthTotals).sort()
 
   const lineData = {
@@ -125,18 +160,21 @@ export default function VisaoGeral() {
     const doc = new jsPDF()
     doc.setFontSize(16)
     doc.text('Relatório de Transações', 14, 20)
+
     doc.setFontSize(10)
     doc.text(`Entradas: ${formatCurrency(totalIncome)}`, 14, 30)
     doc.text(`Saídas: ${formatCurrency(totalExpense)}`, 14, 37)
     doc.text(`Saldo: ${formatCurrency(balance)}`, 14, 44)
 
     let y = 58
+
     doc.setFontSize(9)
     doc.text('Descrição', 14, y)
     doc.text('Tipo', 80, y)
     doc.text('Categoria', 110, y)
     doc.text('Data', 155, y)
     doc.text('Valor', 178, y)
+
     y += 5
     doc.line(14, y, 200, y)
     y += 5
@@ -146,11 +184,13 @@ export default function VisaoGeral() {
         doc.addPage()
         y = 20
       }
+
       doc.text(t.description.substring(0, 30), 14, y)
       doc.text(t.type === 'income' ? 'Entrada' : 'Saída', 80, y)
       doc.text((catMap[t.id] || '-').substring(0, 20), 110, y)
       doc.text(t.date, 155, y)
       doc.text(Number(t.amount).toFixed(2), 178, y)
+
       y += 7
     })
 
@@ -160,49 +200,87 @@ export default function VisaoGeral() {
   function clearFilters() {
     setFilterMonth('')
     setFilterCategory('')
+    setFilterMinValue('')
+    setFilterMaxValue('')
   }
 
-  const hasFilters = filterMonth || filterCategory
+  const hasFilters =
+    filterMonth ||
+    filterCategory ||
+    filterMinValue ||
+    filterMaxValue
 
   return (
     <Container>
       <PageTitle>Visão Geral</PageTitle>
 
-      <FiltersRow>
+      <FiltersRow style={{ flexWrap: 'wrap', gap: '8px' }}>
+        <FilterInput
+          type="number"
+          placeholder="Valor mínimo"
+          value={filterMinValue}
+          onChange={(e) => setFilterMinValue(e.target.value)}
+        />
+
+        <FilterInput
+          type="number"
+          placeholder="Valor máximo"
+          value={filterMaxValue}
+          onChange={(e) => setFilterMaxValue(e.target.value)}
+        />
+
         <FilterInput
           type="month"
           value={filterMonth}
           onChange={(e) => setFilterMonth(e.target.value)}
         />
+
         <FilterSelect
           value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value)}
         >
           <option value="">Todas as categorias</option>
           {categories.map((c) => (
-            <option key={c} value={c}>{c}</option>
+            <option key={c} value={c}>
+              {c}
+            </option>
           ))}
         </FilterSelect>
-        {hasFilters && <ClearButton type="button" onClick={clearFilters}>Limpar filtros</ClearButton>}
+
+        {hasFilters && (
+          <ClearButton type="button" onClick={clearFilters}>
+            Limpar filtros
+          </ClearButton>
+        )}
       </FiltersRow>
 
       <CardsRow>
         <SummaryCard>
           <CardLabel>Entradas</CardLabel>
-          <CardValue $variant="income">{formatCurrency(totalIncome)}</CardValue>
+          <CardValue $variant="income">
+            {formatCurrency(totalIncome)}
+          </CardValue>
         </SummaryCard>
+
         <SummaryCard>
           <CardLabel>Saídas</CardLabel>
-          <CardValue $variant="expense">{formatCurrency(totalExpense)}</CardValue>
+          <CardValue $variant="expense">
+            {formatCurrency(totalExpense)}
+          </CardValue>
         </SummaryCard>
+
         <SummaryCard>
           <CardLabel>Saldo</CardLabel>
-          <CardValue $variant={balance >= 0 ? 'income' : 'expense'}>{formatCurrency(balance)}</CardValue>
+          <CardValue $variant={balance >= 0 ? 'income' : 'expense'}>
+            {formatCurrency(balance)}
+          </CardValue>
         </SummaryCard>
       </CardsRow>
 
       {filtered.length === 0 ? (
-        <EmptyMessage>Nenhuma transação encontrada para os filtros selecionados.</EmptyMessage>
+        <EmptyMessage>
+          Nenhuma transação encontrada para os filtros selecionados.
+        </EmptyMessage>
       ) : (
         <ChartsRow>
           {Object.keys(expensesByCategory).length > 0 && (
@@ -211,6 +289,7 @@ export default function VisaoGeral() {
               <Pie data={pieData} />
             </ChartSection>
           )}
+
           {sortedMonths.length > 0 && (
             <ChartSection>
               <ChartTitle>Histórico por Mês</ChartTitle>
@@ -220,7 +299,11 @@ export default function VisaoGeral() {
         </ChartsRow>
       )}
 
-      <ExportButton type="button" onClick={exportPDF} disabled={filtered.length === 0}>
+      <ExportButton
+        type="button"
+        onClick={exportPDF}
+        disabled={filtered.length === 0}
+      >
         Exportar PDF
       </ExportButton>
     </Container>

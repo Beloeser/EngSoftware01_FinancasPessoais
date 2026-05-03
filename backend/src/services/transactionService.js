@@ -23,6 +23,18 @@ export const transactionService = {
     });
   },
 
+
+
+  async getByPrice(priceMin, priceMax) {
+  return Transaction.findAll({
+    where: {
+      amount: {
+        [Op.between]: [priceMin, priceMax]
+      }
+    }
+  });
+  },
+
   async getSummary(userId) {
     const transactions = await Transaction.findAll({ where: { userId } });
 
@@ -60,4 +72,7 @@ export const transactionService = {
     await transaction.update(data);
     return transaction;
   },
+
+
+
 };

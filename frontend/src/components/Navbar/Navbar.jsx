@@ -28,7 +28,6 @@ export default function Navbar() {
           <LinkItem to="/dashboard">Dashboard</LinkItem>
           <LinkItem to="/visao-geral">Visão Geral</LinkItem>
           <LinkItem to="/categories">Categorias</LinkItem>
-          <LinkItem to="/profile">Perfil</LinkItem>
         </Links>
       </Left>
       <Right>

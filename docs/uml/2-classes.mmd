@@ -1,0 +1,69 @@
+classDiagram
+    class User {
+        +Integer id
+        +String name
+        +String email
+        +String password
+        +Date createdAt
+        +Date updatedAt
+    }
+
+    class Transaction {
+        +Integer id
+        +String description
+        +Decimal amount
+        +Enum type
+        +Date date
+        +Integer userId
+    }
+
+    class Category {
+        <<frontend-only>>
+        +String id
+        +String name
+    }
+
+    class AuthController {
+        +register(req, res)
+        +login(req, res)
+    }
+
+    class TransactionController {
+        +list(req, res)
+        +create(req, res)
+        +update(req, res)
+        +remove(req, res)
+    }
+
+    class UserController {
+        +profile(req, res)
+    }
+
+    class AuthService {
+        +registerUser(data)
+        +authenticate(email, password)
+    }
+
+    class TransactionService {
+        +listByUser(userId)
+        +create(data)
+        +update(id, data)
+        +remove(id)
+    }
+
+    class UserService {
+        +findById(id)
+    }
+
+    class AuthMiddleware {
+        +verifyJWT(req, res, next)
+    }
+
+    User "1" --> "0..*" Transaction : possui
+    AuthController ..> AuthService
+    TransactionController ..> TransactionService
+    UserController ..> UserService
+    AuthService ..> User
+    TransactionService ..> Transaction
+    UserService ..> User
+    AuthMiddleware ..> User : valida JWT

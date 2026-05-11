@@ -1,0 +1,37 @@
+graph LR
+    Browser([Navegador])
+
+    subgraph FE["Frontend — React + Vite"]
+        Pages["Pages<br/>Login · Dashboard<br/>VisaoGeral · Categories · Profile"]
+        AuthCtx["AuthContext<br/>useAuth"]
+        UseCat["useCategories"]
+        LS[("localStorage<br/>token + categories")]
+        ApiClient["services/api.js<br/>Axios + interceptor JWT"]
+
+        Pages --> AuthCtx
+        Pages --> UseCat
+        Pages --> ApiClient
+        AuthCtx --> LS
+        UseCat --> LS
+    end
+
+    subgraph BE["Backend — Node + Express"]
+        Routes["Routes<br/>/auth · /users · /transactions"]
+        MW["authMiddleware<br/>verifica JWT"]
+        Ctrls["Controllers<br/>Auth · User · Transaction"]
+        Svcs["Services<br/>Auth · User · Transaction"]
+        Models["Models Sequelize<br/>User · Transaction"]
+
+        Routes --> MW
+        MW --> Ctrls
+        Ctrls --> Svcs
+        Svcs --> Models
+    end
+
+    DB[("PostgreSQL")]
+    Docker["docker-compose"]
+
+    Browser --> Pages
+    ApiClient -->|HTTP + Bearer JWT| Routes
+    Models --> DB
+    Docker -.->|orquestra| DB

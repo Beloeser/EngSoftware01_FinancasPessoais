@@ -1,9 +1,13 @@
-import { categoryService } from "../services/categoryService.js";
+import { Category } from "../models/index.js";
 
 export const categoryController = {
   async create(req, res, next) {
     try {
-      const category = await categoryService.create({
+      const existing = await Category.findOne({
+        where: { name: req.body.name, userId: req.userId },
+      });
+      if (existing) throw new Error("Categoria já existe");
+      const category = await Category.create({
         ...req.body,
         userId: req.userId,
       });
@@ -15,7 +19,7 @@ export const categoryController = {
 
   async getAll(req, res, next) {
     try {
-      const categories = await categoryService.findAllByUser(req.userId);
+      const categories = await Category.findAll({ where: { userId: req.userId } });
       res.json(categories);
     } catch (error) {
       next(error);

@@ -1,13 +1,29 @@
-import { transactionService } from "../services/transactionService.js";
+import { Transaction } from "../models/index.js";
+import { Op } from "sequelize";
 import { pdfService } from "../services/pdfService.js";
 
 export const transactionController = {
   async getAll(req, res, next) {
     try {
-      const transactions = await transactionService.findAllByUser(
-        req.userId,
-        req.query,
-      );
+      const whereClause = { userId: req.userId };
+
+      const filters = req.query;
+      if (filters.type) {
+        whereClause.type = filters.type;
+      }
+      if (filters.categoryId) {
+        whereClause.categoryId = filters.categoryId;
+      }
+      if (filters.startDate || filters.endDate) {
+        whereClause.date = {};
+        if (filters.startDate) whereClause.date[Op.gte] = filters.startDate;
+        if (filters.endDate) whereClause.date[Op.lte] = filters.endDate;
+      }
+
+      const transactions = await Transaction.findAll({
+        where: whereClause,
+        order: [["date", "DESC"]],
+      });
       res.json(transactions);
     } catch (err) {
       next(err);
@@ -16,7 +32,23 @@ export const transactionController = {
 
   async getSummary(req, res, next) {
     try {
-      const summary = await transactionService.getSummary(req.userId);
+      const transactions = await Transaction.findAll({ where: { userId: req.userId } });
+
+      const summary = transactions.reduce(
+        (acc, curr) => {
+          const amount = parseFloat(curr.amount);
+          if (curr.type === "income") {
+            acc.incomes += amount;
+          } else if (curr.type === "expense") {
+            acc.expenses += amount;
+          }
+          return acc;
+        },
+        { incomes: 0, expenses: 0 },
+      );
+
+      summary.balance = summary.incomes - summary.expenses;
+
       res.json(summary);
     } catch (err) {
       next(err);
@@ -25,7 +57,7 @@ export const transactionController = {
 
   async create(req, res, next) {
     try {
-      const transaction = await transactionService.create({
+      const transaction = await Transaction.create({
         ...req.body,
         userId: req.userId,
       });
@@ -37,7 +69,9 @@ export const transactionController = {
 
   async remove(req, res, next) {
     try {
-      await transactionService.delete(req.params.id, req.userId);
+      const transaction = await Transaction.findOne({ where: { id: req.params.id, userId: req.userId } });
+      if (!transaction) throw new Error("NOT_FOUND");
+      await transaction.destroy();
       res.status(204).send();
     } catch (err) {
       if (err.message === "NOT_FOUND") {
@@ -49,12 +83,10 @@ export const transactionController = {
 
   async update(req, res, next) {
     try {
-      const updatedTransaction = await transactionService.update(
-        req.params.id,
-        req.userId,
-        req.body,
-      );
-      res.status(200).json(updatedTransaction);
+      const transaction = await Transaction.findOne({ where: { id: req.params.id, userId: req.userId } });
+      if (!transaction) throw new Error("NOT_FOUND");
+      await transaction.update(req.body);
+      res.status(200).json(transaction);
     } catch (err) {
       if (err.message === "NOT_FOUND") {
         return res.status(404).json({
@@ -67,10 +99,25 @@ export const transactionController = {
 
   async exportPDF(req, res, next) {
     try {
-      const transactions = await transactionService.findAllByUser(
-        req.userId,
-        req.query,
-      );
+      const whereClause = { userId: req.userId };
+
+      const filters = req.query;
+      if (filters.type) {
+        whereClause.type = filters.type;
+      }
+      if (filters.categoryId) {
+        whereClause.categoryId = filters.categoryId;
+      }
+      if (filters.startDate || filters.endDate) {
+        whereClause.date = {};
+        if (filters.startDate) whereClause.date[Op.gte] = filters.startDate;
+        if (filters.endDate) whereClause.date[Op.lte] = filters.endDate;
+      }
+
+      const transactions = await Transaction.findAll({
+        where: whereClause,
+        order: [["date", "DESC"]],
+      });
 
       const pdfBuffer =
         await pdfService.generateTransactionReport(transactions);

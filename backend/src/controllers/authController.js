@@ -1,4 +1,4 @@
-import { userService } from "../services/userService.js";
+import { User } from "../models/index.js";
 import { generateToken } from "../utils/jwt.js";
 import { hashPassword, comparePassword } from "../utils/crypto.js";
 
@@ -13,13 +13,13 @@ export const authController = {
         return res.status(400).json({ message: "Nome, e-mail e senha são obrigatórios" });
       }
 
-      const existingUser = await userService.findByEmail(email);
+      const existingUser = await User.findOne({ where: { email } });
       if (existingUser) {
         return res.status(409).json({ message: "Já existe uma conta com esse e-mail" });
       }
 
       const hashed = await hashPassword(password);
-      const user = await userService.create({
+      const user = await User.create({
         name,
         email,
         password: hashed,
@@ -43,7 +43,7 @@ export const authController = {
         return res.status(400).json({ message: "E-mail e senha são obrigatórios" });
       }
 
-      const user = await userService.findByEmail(email);
+      const user = await User.findOne({ where: { email } });
       if (!user || !(await comparePassword(password, user.password))) {
         return res.status(401).json({ message: "Credenciais inválidas" });
       }

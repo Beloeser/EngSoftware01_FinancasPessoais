@@ -1,10 +1,10 @@
 graph LR
     Browser([Navegador])
 
-    subgraph FE["Frontend — React + Vite"]
-        Pages["Pages<br/>Login · Dashboard<br/>VisaoGeral · Categories · Profile"]
+    subgraph FE["Frontend (React + Vite)"]
+        Pages["Pages<br/>Login · Register · Dashboard<br/>VisaoGeral · Categories"]
         AuthCtx["AuthContext<br/>useAuth"]
-        UseCat["useCategories"]
+        UseCat["useCategories<br/>(localStorage, integração pendente)"]
         LS[("localStorage<br/>token + categories")]
         ApiClient["services/api.js<br/>Axios + interceptor JWT"]
 
@@ -15,17 +15,17 @@ graph LR
         UseCat --> LS
     end
 
-    subgraph BE["Backend — Node + Express"]
-        Routes["Routes<br/>/auth · /users · /transactions"]
-        MW["authMiddleware<br/>verifica JWT"]
-        Ctrls["Controllers<br/>Auth · User · Transaction"]
-        Svcs["Services<br/>Auth · User · Transaction"]
-        Models["Models Sequelize<br/>User · Transaction"]
+    subgraph BE["Backend (Node + Express)"]
+        Routes["Routes<br/>/auth · /transactions · /categories"]
+        MW["authMiddleware<br/>(JWT)"]
+        Ctrls["Controllers<br/>Auth · Transaction · Category"]
+        PdfSvc["pdfService<br/>(PDFKit)"]
+        Models["Models Sequelize<br/>User · Transaction · Category"]
 
         Routes --> MW
         MW --> Ctrls
-        Ctrls --> Svcs
-        Svcs --> Models
+        Ctrls --> Models
+        Ctrls -.->|export PDF| PdfSvc
     end
 
     DB[("PostgreSQL")]

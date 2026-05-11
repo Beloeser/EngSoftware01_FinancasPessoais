@@ -72,11 +72,11 @@ JWT_SECRET=sua_chave_secreta_aqui
 
 ## Diagramas UML
 
-Documentação preliminar do sistema em UML (Mermaid). Versão estendida e legendada em [`DIAGRAMAS_UML.md`](./DIAGRAMAS_UML.md).
+Documentação preliminar do sistema em UML (Mermaid). Versão estendida e legendada em [`DIAGRAMAS_UML.md`](./DIAGRAMAS_UML.md). PNGs renderizados em [`docs/uml/`](./docs/uml/).
 
 ### 1. Casos de Uso
 
-Funcionalidades do ponto de vista do usuário. Casos em amarelo (categorias) são **client-side apenas** — vivem em `localStorage`, sem persistência no backend.
+Funcionalidades do ponto de vista do usuário. **Categorizar transação** está em amarelo — a entidade `Category` já existe no backend (`/api/categories`), mas o frontend ainda usa `localStorage` e ainda não vincula `categoryId` às transações via API (integração pendente).
 
 ```mermaid
 graph LR
@@ -88,26 +88,31 @@ graph LR
     User --> UC4[Cadastrar transação]
     User --> UC5[Editar transação]
     User --> UC6[Remover transação]
-    User --> UC7[Filtrar por mês/categoria]
-    User --> UC8[Cadastrar categoria]:::client
-    User --> UC9[Categorizar transação]:::client
-    User --> UC10[Ver dashboard com gráficos]
-    User --> UC11[Exportar PDF]
+    User --> UC7[Filtrar transações<br/>por tipo/categoria/data]
+    User --> UC8[Ver resumo financeiro]
+    User --> UC9[Cadastrar categoria]
+    User --> UC10[Listar categorias]
+    User --> UC11[Categorizar transação]:::pending
+    User --> UC12[Ver dashboard com gráficos]
+    User --> UC13[Exportar PDF]
 
     UC3 -.->|include| UC2
     UC4 -.->|include| UC2
     UC5 -.->|include| UC2
     UC6 -.->|include| UC2
     UC7 -.->|include| UC3
-    UC10 -.->|include| UC3
-    UC11 -.->|include| UC3
+    UC8 -.->|include| UC2
+    UC9 -.->|include| UC2
+    UC10 -.->|include| UC2
+    UC12 -.->|include| UC3
+    UC13 -.->|include| UC3
 
-    classDef client fill:#fff3cd,stroke:#e0a800,color:#333
+    classDef pending fill:#fff3cd,stroke:#e0a800,color:#333
 ```
 
 ### 2. Classes
 
-Modelo de dados e principais classes por camada (Controller → Service → Model). `Category` é `<<frontend-only>>` (não há entidade no backend).
+Modelo de dados e principais classes do backend. **Não há camada de Services geral** — controllers chamam os Models do Sequelize diretamente. O único service é o `PdfService`, usado pelo `TransactionController` para gerar o relatório.
 
 ```mermaid
 classDiagram
@@ -130,69 +135,72 @@ classDiagram
     }
 
     class Category {
-        <<frontend-only>>
-        +String id
+        +Integer id
         +String name
+        +String color
+        +Integer userId
     }
 
     class AuthController {
-        +register(req, res)
-        +login(req, res)
+        +register(req, res, next)
+        +login(req, res, next)
     }
 
     class TransactionController {
-        +list(req, res)
-        +create(req, res)
-        +update(req, res)
-        +remove(req, res)
+        +getAll(req, res, next)
+        +getSummary(req, res, next)
+        +create(req, res, next)
+        +update(req, res, next)
+        +remove(req, res, next)
+        +exportPDF(req, res, next)
     }
 
-    class UserController {
-        +profile(req, res)
+    class CategoryController {
+        +create(req, res, next)
+        +getAll(req, res, next)
     }
 
-    class AuthService {
-        +registerUser(data)
-        +authenticate(email, password)
-    }
-
-    class TransactionService {
-        +listByUser(userId)
-        +create(data)
-        +update(id, data)
-        +remove(id)
-    }
-
-    class UserService {
-        +findById(id)
+    class PdfService {
+        +generateTransactionReport(transactions)
     }
 
     class AuthMiddleware {
-        +verifyJWT(req, res, next)
+        +authMiddleware(req, res, next)
+    }
+
+    class JwtUtils {
+        +generateToken(id)
+        +verifyToken(token)
+    }
+
+    class CryptoUtils {
+        +hashPassword(password)
+        +comparePassword(pw, hash)
     }
 
     User "1" --> "0..*" Transaction : possui
-    AuthController ..> AuthService
-    TransactionController ..> TransactionService
-    UserController ..> UserService
-    AuthService ..> User
-    TransactionService ..> Transaction
-    UserService ..> User
-    AuthMiddleware ..> User : valida JWT
+    User "1" --> "0..*" Category : possui
+    AuthController ..> User
+    AuthController ..> JwtUtils
+    AuthController ..> CryptoUtils
+    TransactionController ..> Transaction
+    TransactionController ..> PdfService
+    CategoryController ..> Category
+    AuthMiddleware ..> JwtUtils
 ```
 
 ### 3. Componentes / Arquitetura
 
-Como os módulos se comunicam: frontend ↔ backend via HTTP + JWT; backend ↔ PostgreSQL via Sequelize.
+Como os módulos se comunicam: frontend ↔ backend via HTTP + JWT; backend ↔ PostgreSQL via Sequelize. `pdfService` é invocado apenas pelo `TransactionController` no fluxo de exportação. `useCategories` no frontend ainda usa `localStorage` (integração com `/api/categories` pendente).
 
 ```mermaid
 graph LR
     Browser([Navegador])
 
-    subgraph FE["Frontend — React + Vite"]
-        Pages["Pages<br/>Login · Dashboard<br/>VisaoGeral · Categories · Profile"]
+    subgraph FE["Frontend (React + Vite)"]
+        Pages["Pages<br/>Login · Register · Dashboard<br/>VisaoGeral · Categories"]
         AuthCtx["AuthContext<br/>useAuth"]
-        UseCat["useCategories"]
+        UseCat["useCategories<br/>(localStorage, integração pendente)"]
         LS[("localStorage<br/>token + categories")]
         ApiClient["services/api.js<br/>Axios + interceptor JWT"]
 
@@ -203,17 +211,17 @@ graph LR
         UseCat --> LS
     end
 
-    subgraph BE["Backend — Node + Express"]
-        Routes["Routes<br/>/auth · /users · /transactions"]
-        MW["authMiddleware<br/>verifica JWT"]
-        Ctrls["Controllers<br/>Auth · User · Transaction"]
-        Svcs["Services<br/>Auth · User · Transaction"]
-        Models["Models Sequelize<br/>User · Transaction"]
+    subgraph BE["Backend (Node + Express)"]
+        Routes["Routes<br/>/auth · /transactions · /categories"]
+        MW["authMiddleware<br/>(JWT)"]
+        Ctrls["Controllers<br/>Auth · Transaction · Category"]
+        PdfSvc["pdfService<br/>(PDFKit)"]
+        Models["Models Sequelize<br/>User · Transaction · Category"]
 
         Routes --> MW
         MW --> Ctrls
-        Ctrls --> Svcs
-        Svcs --> Models
+        Ctrls --> Models
+        Ctrls -.->|export PDF| PdfSvc
     end
 
     DB[("PostgreSQL")]

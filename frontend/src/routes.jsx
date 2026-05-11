@@ -25,7 +25,6 @@ export default function AppRoutes() {
       <Route path="/" element={<PublicRoute><Register /></PublicRoute>} />
       <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
       <Route path="/visao-geral" element={<PrivateRoute><VisaoGeral /></PrivateRoute>} />
-      
       <Route path="/categories" element={<PrivateRoute><Categories /></PrivateRoute>} />
     </Routes>
   )

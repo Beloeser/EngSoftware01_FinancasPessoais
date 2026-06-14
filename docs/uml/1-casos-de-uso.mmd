@@ -1,0 +1,29 @@
+graph LR
+    User((Usuário))
+
+    User --> UC1[Cadastrar conta]
+    User --> UC2[Fazer login]
+    User --> UC3[Listar transações]
+    User --> UC4[Cadastrar transação]
+    User --> UC5[Editar transação]
+    User --> UC6[Remover transação]
+    User --> UC7[Filtrar transações<br/>por tipo/categoria/data]
+    User --> UC8[Ver resumo financeiro]
+    User --> UC9[Cadastrar categoria]
+    User --> UC10[Listar categorias]
+    User --> UC11[Categorizar transação]:::pending
+    User --> UC12[Ver dashboard com gráficos]
+    User --> UC13[Exportar PDF]
+
+    UC3 -.->|include| UC2
+    UC4 -.->|include| UC2
+    UC5 -.->|include| UC2
+    UC6 -.->|include| UC2
+    UC7 -.->|include| UC3
+    UC8 -.->|include| UC2
+    UC9 -.->|include| UC2
+    UC10 -.->|include| UC2
+    UC12 -.->|include| UC3
+    UC13 -.->|include| UC3
+
+    classDef pending fill:#fff3cd,stroke:#e0a800,color:#333

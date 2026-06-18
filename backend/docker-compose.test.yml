@@ -1,0 +1,14 @@
+version: '3.3'
+
+services:
+  postgres_test:
+    image: postgres:15
+    container_name: financas_db_test
+    environment:
+      POSTGRES_DB: financas_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5433:5432'
+    tmpfs:
+      - /var/lib/postgresql/data

@@ -55,6 +55,29 @@ cd /home/beloeser/Codigos/EngSoftware/frontend
 npm run test:run
 ```
 
+Rodar apenas um arquivo de teste do frontend:
+
+```bash
+cd /home/beloeser/Codigos/EngSoftware/frontend
+npm run test:run -- src/utils/formatDate.test.js
+```
+
+Outro exemplo:
+
+```bash
+cd /home/beloeser/Codigos/EngSoftware/frontend
+npm run test:run -- src/hooks/useCategories.test.jsx
+```
+
+Rodar apenas um teste pelo nome:
+
+```bash
+cd /home/beloeser/Codigos/EngSoftware/frontend
+npm run test:run -- src/hooks/useCategories.test.jsx -t "nome do teste"
+```
+
+O texto depois de `-t` deve ser uma parte do nome que aparece dentro do `it(...)` ou `test(...)`.
+
 Com cobertura:
 
 ```bash
@@ -89,8 +112,32 @@ Testa partes pequenas do backend, como criptografia, JWT e servico de PDF.
 
 ```bash
 cd /home/beloeser/Codigos/EngSoftware/backend
-npm install
 npx vitest run test/unit
+```
+
+Rodar apenas um arquivo de teste unitario do backend:
+
+```bash
+cd /home/beloeser/Codigos/EngSoftware/backend
+npm run test:run -- test/unit/pdfService.test.js
+```
+
+Rodar apenas um teste unitario pelo nome:
+
+```bash
+cd /home/beloeser/Codigos/EngSoftware/backend
+npm run test:run -- test/unit/pdfService.test.js -t "nome do teste"
+```
+
+### Preparar Docker Compose uma vez
+
+Se o `docker compose version` ja funcionar, pule esta parte.
+
+```bash
+sudo apt update
+sudo apt install -y docker-compose-v2
+sudo service docker start
+docker compose version
 ```
 
 ### Testes de integracao
@@ -98,21 +145,52 @@ npx vitest run test/unit
 Precisam do Postgres de teste na porta `5433`.
 Testam as rotas reais do backend com banco de teste.
 
+Copie e rode este bloco no dia a dia:
+
 ```bash
 cd /home/beloeser/Codigos/EngSoftware/backend
-npm install
-npm run test:db:up
-npm run test:run
-npm run test:db:down
+sudo docker compose -f docker-compose.test.yml up -d && timeout 60 bash -c 'until pg_isready -h 127.0.0.1 -p 5433; do sleep 1; done' && npm run test:run
+sudo docker compose -f docker-compose.test.yml down
 ```
+
+Rodar apenas um arquivo de teste de integracao do backend:
+
+```bash
+cd /home/beloeser/Codigos/EngSoftware/backend
+sudo docker compose -f docker-compose.test.yml up -d && timeout 60 bash -c 'until pg_isready -h 127.0.0.1 -p 5433; do sleep 1; done' && npm run test:run -- test/integration/auth.test.js
+sudo docker compose -f docker-compose.test.yml down
+```
+
+Outros exemplos:
+
+```bash
+cd /home/beloeser/Codigos/EngSoftware/backend
+sudo docker compose -f docker-compose.test.yml up -d && timeout 60 bash -c 'until pg_isready -h 127.0.0.1 -p 5433; do sleep 1; done' && npm run test:run -- test/integration/categories.test.js
+sudo docker compose -f docker-compose.test.yml down
+```
+
+Rodar apenas um teste de integracao pelo nome:
+
+```bash
+cd /home/beloeser/Codigos/EngSoftware/backend
+sudo docker compose -f docker-compose.test.yml up -d && timeout 60 bash -c 'until pg_isready -h 127.0.0.1 -p 5433; do sleep 1; done' && npm run test:run -- test/integration/auth.test.js -t "nome do teste"
+sudo docker compose -f docker-compose.test.yml down
+```
+
+Antes de rodar `npm run test:run`, o comando `pg_isready` precisa mostrar:
+
+```text
+127.0.0.1:5433 - accepting connections
+```
+
+O `timeout 60 bash -c 'until pg_isready ...'` espera o Postgres do Docker ficar pronto por ate 60 segundos.
 
 Com cobertura:
 
 ```bash
 cd /home/beloeser/Codigos/EngSoftware/backend
-npm run test:db:up
-npm run coverage
-npm run test:db:down
+sudo docker compose -f docker-compose.test.yml up -d && timeout 60 bash -c 'until pg_isready -h 127.0.0.1 -p 5433; do sleep 1; done' && npm run coverage
+sudo docker compose -f docker-compose.test.yml down
 ```
 
 Use este comando quando quiser ver o percentual de cobertura dos testes do backend.
@@ -144,6 +222,20 @@ cd /home/beloeser/Codigos/EngSoftware/frontend
 env -u ELECTRON_RUN_AS_NODE npm run cy:run
 ```
 
+Rodar apenas um arquivo do Cypress:
+
+```bash
+cd /home/beloeser/Codigos/EngSoftware/frontend
+env -u ELECTRON_RUN_AS_NODE npm run cy:run -- --spec cypress/e2e/login.cy.js
+```
+
+Outro exemplo:
+
+```bash
+cd /home/beloeser/Codigos/EngSoftware/frontend
+env -u ELECTRON_RUN_AS_NODE npm run cy:run -- --spec cypress/e2e/categorias.cy.js
+```
+
 Terminal 3, interface visual:
 
 ```bash
@@ -157,6 +249,8 @@ Na interface do Cypress, escolha:
 E2E Testing -> Electron -> Start E2E Testing
 ```
 
+Depois clique no arquivo que voce quer rodar, por exemplo `login.cy.js` ou `categorias.cy.js`.
+
 ## Resumo rapido
 
 ```bash
@@ -168,10 +262,12 @@ npm run coverage
 # Backend
 cd /home/beloeser/Codigos/EngSoftware/backend
 npx vitest run test/unit
-npm run test:db:up
-npm run test:run
+
+# Backend com banco de teste no Docker Compose
+cd /home/beloeser/Codigos/EngSoftware/backend
+sudo docker compose -f docker-compose.test.yml up -d && timeout 60 bash -c 'until pg_isready -h 127.0.0.1 -p 5433; do sleep 1; done' && npm run test:run
 npm run coverage
-npm run test:db:down
+sudo docker compose -f docker-compose.test.yml down
 
 # Cypress
 cd /home/beloeser/Codigos/EngSoftware/frontend
@@ -183,4 +279,7 @@ env -u ELECTRON_RUN_AS_NODE npm run cy:open
 - Cypress nao substitui Vitest: eles se complementam.
 - Vitest e mais rapido e testa partes menores.
 - Cypress e mais lento, mas valida o fluxo completo no navegador.
-- Se o Docker falhar ao subir o banco de teste do backend, use um Postgres local na porta `5433` com o banco `financas_test`.
+- Os testes de integracao do backend precisam do banco de teste do Docker Compose na porta `5433`.
+- Se `docker compose ...` der `permission denied`, use `sudo docker compose ...`.
+- No Vitest, use o caminho do arquivo para rodar um arquivo so; use `-t "nome do teste"` para rodar um teste especifico.
+- No Cypress, use `-- --spec caminho/do/arquivo.cy.js` para rodar um arquivo so.

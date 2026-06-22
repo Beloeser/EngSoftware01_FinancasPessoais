@@ -39,26 +39,32 @@ npm run test:db:up
 npm run coverage
 ```
 
-### Teste explicado nº 1 — Unidade (frontend): `useCategories`
-Arquivo: `frontend/src/hooks/useCategories.test.jsx`
+### Teste explicado nº 1 — Unidade (frontend): `isValidEmail`
+Arquivo: `frontend/src/utils/validators.test.js`
 
-Testa o hook que gerencia categorias pela API (`/categories`). Cobre os ramos de borda:
-carregar categorias, **ignorar duplicada**, **fazer trim**, ignorar vazio, remover e o
-fallback quando a API falha.
+Teste de unidade de uma **função pura** (sem banco, sem mock, sem renderizar componente)
+— a menor unidade possível, na base da pirâmide. Valida a regex de e-mail cobrindo o
+caso feliz e os de borda.
 
 ```js
-it('adiciona uma categoria pela API e atualiza a lista', async () => {
-  const { result } = renderHook(() => useCategories())
-  await waitFor(() => expect(result.current.loading).toBe(false))
-  await act(async () => {
-    await result.current.addCategory('Lazer')
+import { isValidEmail } from './validators'
+
+describe('isValidEmail', () => {
+  it('aceita um e-mail válido', () => {
+    expect(isValidEmail('user@example.com')).toBe(true)
   })
-  expect(api.post).toHaveBeenCalledWith('/categories', { name: 'Lazer' })
+  it('rejeita string sem @', () => {
+    expect(isValidEmail('invalido')).toBe(false)
+  })
+  it('rejeita e-mail sem domínio/TLD', () => {
+    expect(isValidEmail('a@b')).toBe(false)
+  })
 })
 ```
-- **Contexto:** `renderHook` cria o hook isolado e o `api` é mockado.
-- **Exercício:** chama `addCategory`.
-- **Assert:** a API é chamada corretamente e a lista local do hook é atualizada.
+- **Exercício:** chama `isValidEmail(...)` com uma entrada.
+- **Assert:** `expect(...).toBe(true/false)` — um assert por teste (o "verde/vermelho").
+- Atende ao **FIRST**: rápido, independente e determinístico; não precisa de mock por não
+  ter dependência externa.
 
 ### Teste explicado nº 2 — Integração (backend): cadastro via API
 Arquivo: `backend/test/integration/auth.test.js` (usa **supertest** + Postgres real)

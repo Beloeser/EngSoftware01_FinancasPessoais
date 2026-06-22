@@ -18,23 +18,27 @@ import {
 } from './Styles'
 
 export default function Categories() {
-  const { categories, addCategory, removeCategory } = useCategories()
+  const { categories, error: loadError, addCategory, removeCategory } = useCategories()
   const [name, setName] = useState('')
   const [error, setError] = useState('')
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     setError('')
     if (!name.trim()) {
       setError('Informe o nome da categoria.')
       return
     }
-    if (categories.includes(name.trim())) {
+    if (categories.some((category) => category.name === name.trim())) {
       setError('Categoria já cadastrada.')
       return
     }
-    addCategory(name)
-    setName('')
+    try {
+      await addCategory(name)
+      setName('')
+    } catch (err) {
+      setError(err.response?.data?.message || 'Erro ao cadastrar categoria.')
+    }
   }
 
   return (
@@ -54,14 +58,15 @@ export default function Categories() {
         </form>
       </Card>
 
+      {loadError && <ErrorMessage>{loadError}</ErrorMessage>}
       <CategoryList>
         {categories.length === 0 && (
           <EmptyText>Nenhuma categoria cadastrada.</EmptyText>
         )}
         {categories.map((cat) => (
-          <CategoryItem key={cat}>
-            <CategoryName>{cat}</CategoryName>
-            <RemoveButton type="button" onClick={() => removeCategory(cat)}>
+          <CategoryItem key={cat.id}>
+            <CategoryName>{cat.name}</CategoryName>
+            <RemoveButton type="button" onClick={() => removeCategory(cat.id)}>
               Remover
             </RemoveButton>
           </CategoryItem>

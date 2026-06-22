@@ -41,7 +41,6 @@ ChartJS.register(
   LineElement
 )
 
-const CAT_MAP_KEY = 'transactionCategories'
 const PIE_COLORS = [
   '#FF6384',
   '#36A2EB',
@@ -51,14 +50,6 @@ const PIE_COLORS = [
   '#FF9F40',
   '#C9CBCF',
 ]
-
-function loadCatMap() {
-  try {
-    return JSON.parse(localStorage.getItem(CAT_MAP_KEY)) || {}
-  } catch {
-    return {}
-  }
-}
 
 function formatCurrency(value) {
   return Number(value).toLocaleString('pt-BR', {
@@ -76,8 +67,6 @@ export default function VisaoGeral() {
   const [filterMinValue, setFilterMinValue] = useState('')
   const [filterMaxValue, setFilterMaxValue] = useState('')
 
-  const catMap = loadCatMap()
-
   useEffect(() => {
     api.get('/transactions').then(({ data }) => setTransactions(data))
   }, [])
@@ -88,7 +77,7 @@ export default function VisaoGeral() {
     const amount = Number(t.amount)
 
     if (filterMonth && !t.date.startsWith(filterMonth)) return false
-    if (filterCategory && (catMap[t.id] || '') !== filterCategory) return false
+    if (filterCategory && String(t.categoryId || '') !== filterCategory) return false
 
     if (filterMinValue && amount < parseValue(filterMinValue)) return false
     if (filterMaxValue && amount > parseValue(filterMaxValue)) return false
@@ -110,7 +99,7 @@ export default function VisaoGeral() {
   filtered
     .filter((t) => t.type === 'expense')
     .forEach((t) => {
-      const cat = catMap[t.id] || 'Sem categoria'
+      const cat = getCategoryName(t) || 'Sem categoria'
       expensesByCategory[cat] =
         (expensesByCategory[cat] || 0) + Number(t.amount)
     })
@@ -187,7 +176,7 @@ export default function VisaoGeral() {
 
       doc.text(t.description.substring(0, 30), 14, y)
       doc.text(t.type === 'income' ? 'Entrada' : 'Saída', 80, y)
-      doc.text((catMap[t.id] || '-').substring(0, 20), 110, y)
+      doc.text((getCategoryName(t) || '-').substring(0, 20), 110, y)
       doc.text(t.date, 155, y)
       doc.text(Number(t.amount).toFixed(2), 178, y)
 
@@ -209,6 +198,11 @@ export default function VisaoGeral() {
     filterCategory ||
     filterMinValue ||
     filterMaxValue
+
+  function getCategoryName(transaction) {
+    if (transaction.category?.name) return transaction.category.name
+    return categories.find((category) => category.id === transaction.categoryId)?.name
+  }
 
   return (
     <Container>
@@ -241,8 +235,8 @@ export default function VisaoGeral() {
         >
           <option value="">Todas as categorias</option>
           {categories.map((c) => (
-            <option key={c} value={c}>
-              {c}
+            <option key={c.id} value={c.id}>
+              {c.name}
             </option>
           ))}
         </FilterSelect>

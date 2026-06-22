@@ -1,6 +1,37 @@
-import { Transaction } from "../models/index.js";
+import { Transaction, Category } from "../models/index.js";
 import { Op } from "sequelize";
 import { pdfService } from "../services/pdfService.js";
+
+async function ensureUserCategory(categoryId, userId) {
+  if (!categoryId) return null;
+
+  const category = await Category.findOne({
+    where: { id: categoryId, userId },
+  });
+
+  if (!category) {
+    const error = new Error("Categoria não encontrada.");
+    error.status = 404;
+    throw error;
+  }
+
+  return category.id;
+}
+
+async function buildTransactionPayload(body, userId) {
+  const payload = {
+    description: body.description,
+    amount: body.amount,
+    type: body.type,
+    date: body.date,
+  };
+
+  if (Object.prototype.hasOwnProperty.call(body, "categoryId")) {
+    payload.categoryId = await ensureUserCategory(body.categoryId, userId);
+  }
+
+  return payload;
+}
 
 export const transactionController = {
   async getAll(req, res, next) {
@@ -22,6 +53,7 @@ export const transactionController = {
 
       const transactions = await Transaction.findAll({
         where: whereClause,
+        include: [{ model: Category, as: "category" }],
         order: [["date", "DESC"]],
       });
       res.json(transactions);
@@ -57,11 +89,15 @@ export const transactionController = {
 
   async create(req, res, next) {
     try {
+      const payload = await buildTransactionPayload(req.body, req.userId);
       const transaction = await Transaction.create({
-        ...req.body,
+        ...payload,
         userId: req.userId,
       });
-      res.status(201).json(transaction);
+      const created = await Transaction.findByPk(transaction.id, {
+        include: [{ model: Category, as: "category" }],
+      });
+      res.status(201).json(created);
     } catch (err) {
       next(err);
     }
@@ -85,8 +121,12 @@ export const transactionController = {
     try {
       const transaction = await Transaction.findOne({ where: { id: req.params.id, userId: req.userId } });
       if (!transaction) throw new Error("NOT_FOUND");
-      await transaction.update(req.body);
-      res.status(200).json(transaction);
+      const payload = await buildTransactionPayload(req.body, req.userId);
+      await transaction.update(payload);
+      const updated = await Transaction.findByPk(transaction.id, {
+        include: [{ model: Category, as: "category" }],
+      });
+      res.status(200).json(updated);
     } catch (err) {
       if (err.message === "NOT_FOUND") {
         return res.status(404).json({
@@ -116,6 +156,7 @@ export const transactionController = {
 
       const transactions = await Transaction.findAll({
         where: whereClause,
+        include: [{ model: Category, as: "category" }],
         order: [["date", "DESC"]],
       });
 

@@ -1,4 +1,4 @@
-import { Category } from "../models/index.js";
+import { Category, Transaction } from "../models/index.js";
 
 export const categoryController = {
   async create(req, res, next) {
@@ -19,8 +19,33 @@ export const categoryController = {
 
   async getAll(req, res, next) {
     try {
-      const categories = await Category.findAll({ where: { userId: req.userId } });
+      const categories = await Category.findAll({
+        where: { userId: req.userId },
+        order: [["name", "ASC"]],
+      });
       res.json(categories);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async remove(req, res, next) {
+    try {
+      const category = await Category.findOne({
+        where: { id: req.params.id, userId: req.userId },
+      });
+
+      if (!category) {
+        return res.status(404).json({ message: "Categoria não encontrada." });
+      }
+
+      await Transaction.update(
+        { categoryId: null },
+        { where: { categoryId: category.id, userId: req.userId } },
+      );
+      await category.destroy();
+
+      res.status(204).send();
     } catch (error) {
       next(error);
     }

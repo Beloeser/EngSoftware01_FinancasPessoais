@@ -1,12 +1,25 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Categories from './Categories'
 
+vi.mock('../../services/api', () => ({
+  default: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
+}))
+
+import api from '../../services/api'
+
 describe('Categories (integração)', () => {
-  it('mostra o estado vazio quando não há categorias', () => {
+  beforeEach(() => {
+    api.get.mockResolvedValue({ data: [] })
+    api.post.mockResolvedValue({ data: { id: 1, name: 'Lazer' } })
+    api.delete.mockResolvedValue({ data: {} })
+  })
+
+  it('mostra o estado vazio quando não há categorias', async () => {
     render(<Categories />)
-    expect(screen.getByText('Nenhuma categoria cadastrada.')).toBeInTheDocument()
+    expect(await screen.findByText('Nenhuma categoria cadastrada.')).toBeInTheDocument()
+    expect(api.get).toHaveBeenCalledWith('/categories')
   })
 
   it('adiciona uma nova categoria e limpa o campo', async () => {
@@ -15,7 +28,8 @@ describe('Categories (integração)', () => {
     await userEvent.type(input, 'Lazer')
     await userEvent.click(screen.getByRole('button', { name: 'Adicionar' }))
 
-    expect(screen.getByText('Lazer')).toBeInTheDocument()
+    expect(await screen.findByText('Lazer')).toBeInTheDocument()
+    expect(api.post).toHaveBeenCalledWith('/categories', { name: 'Lazer' })
     expect(input).toHaveValue('')
   })
 
@@ -41,10 +55,13 @@ describe('Categories (integração)', () => {
     const input = screen.getByPlaceholderText('Nome da categoria *')
     await userEvent.type(input, 'Lazer')
     await userEvent.click(screen.getByRole('button', { name: 'Adicionar' }))
-    expect(screen.getByText('Lazer')).toBeInTheDocument()
+    expect(await screen.findByText('Lazer')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Remover' }))
-    expect(screen.queryByText('Lazer')).not.toBeInTheDocument()
+    expect(api.delete).toHaveBeenCalledWith('/categories/1')
+    await waitFor(() => {
+      expect(screen.queryByText('Lazer')).not.toBeInTheDocument()
+    })
     expect(screen.getByText('Nenhuma categoria cadastrada.')).toBeInTheDocument()
   })
 })

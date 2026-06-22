@@ -43,4 +43,29 @@ describe('Categorias (integração)', () => {
     expect(res.status).toBe(200)
     expect(res.body).toHaveLength(2)
   })
+
+  it('remove uma categoria do usuário', async () => {
+    const created = await request(app)
+      .post('/api/categories')
+      .set(authHeader(token))
+      .send({ name: 'Remover' })
+
+    const res = await request(app)
+      .delete(`/api/categories/${created.body.id}`)
+      .set(authHeader(token))
+
+    expect(res.status).toBe(204)
+
+    const list = await request(app).get('/api/categories').set(authHeader(token))
+    expect(list.body).toHaveLength(0)
+  })
+
+  it('retorna 404 ao remover categoria inexistente', async () => {
+    const res = await request(app)
+      .delete('/api/categories/9999')
+      .set(authHeader(token))
+
+    expect(res.status).toBe(404)
+    expect(res.body.message).toBe('Categoria não encontrada.')
+  })
 })

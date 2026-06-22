@@ -56,7 +56,11 @@ npm run dev
 | GET    | /api/users/profile      | Perfil do usuário      | Sim  |
 | GET    | /api/transactions       | Listar transações      | Sim  |
 | POST   | /api/transactions       | Criar transação        | Sim  |
+| PUT    | /api/transactions/:id   | Editar transação       | Sim  |
 | DELETE | /api/transactions/:id   | Remover transação      | Sim  |
+| GET    | /api/categories         | Listar categorias      | Sim  |
+| POST   | /api/categories         | Criar categoria        | Sim  |
+| DELETE | /api/categories/:id     | Remover categoria      | Sim  |
 
 ## Variáveis de ambiente (backend/.env)
 
@@ -76,7 +80,7 @@ Documentação preliminar do sistema em UML (Mermaid). Versão estendida e legen
 
 ### 1. Casos de Uso
 
-Funcionalidades do ponto de vista do usuário. **Categorizar transação** está em amarelo — a entidade `Category` já existe no backend (`/api/categories`), mas o frontend ainda usa `localStorage` e ainda não vincula `categoryId` às transações via API (integração pendente).
+Funcionalidades do ponto de vista do usuário. As categorias são persistidas no backend (`/api/categories`) e podem ser vinculadas às transações por `categoryId`.
 
 ```mermaid
 graph LR
@@ -92,7 +96,7 @@ graph LR
     User --> UC8[Ver resumo financeiro]
     User --> UC9[Cadastrar categoria]
     User --> UC10[Listar categorias]
-    User --> UC11[Categorizar transação]:::pending
+    User --> UC11[Categorizar transação]
     User --> UC12[Ver dashboard com gráficos]
     User --> UC13[Exportar PDF]
 
@@ -106,8 +110,6 @@ graph LR
     UC10 -.->|include| UC2
     UC12 -.->|include| UC3
     UC13 -.->|include| UC3
-
-    classDef pending fill:#fff3cd,stroke:#e0a800,color:#333
 ```
 
 ### 2. Classes
@@ -132,6 +134,7 @@ classDiagram
         +Enum type
         +Date date
         +Integer userId
+        +Integer categoryId
     }
 
     class Category {
@@ -158,6 +161,7 @@ classDiagram
     class CategoryController {
         +create(req, res, next)
         +getAll(req, res, next)
+        +remove(req, res, next)
     }
 
     class PdfService {
@@ -180,6 +184,7 @@ classDiagram
 
     User "1" --> "0..*" Transaction : possui
     User "1" --> "0..*" Category : possui
+    Category "1" --> "0..*" Transaction : classifica
     AuthController ..> User
     AuthController ..> JwtUtils
     AuthController ..> CryptoUtils
@@ -191,7 +196,7 @@ classDiagram
 
 ### 3. Componentes / Arquitetura
 
-Como os módulos se comunicam: frontend ↔ backend via HTTP + JWT; backend ↔ PostgreSQL via Sequelize. `pdfService` é invocado apenas pelo `TransactionController` no fluxo de exportação. `useCategories` no frontend ainda usa `localStorage` (integração com `/api/categories` pendente).
+Como os módulos se comunicam: frontend ↔ backend via HTTP + JWT; backend ↔ PostgreSQL via Sequelize. `pdfService` é invocado apenas pelo `TransactionController` no fluxo de exportação. `useCategories` busca e persiste categorias pela API (`/api/categories`); o `localStorage` fica restrito aos dados de sessão.
 
 ```mermaid
 graph LR
@@ -200,15 +205,15 @@ graph LR
     subgraph FE["Frontend (React + Vite)"]
         Pages["Pages<br/>Login · Register · Dashboard<br/>VisaoGeral · Categories"]
         AuthCtx["AuthContext<br/>useAuth"]
-        UseCat["useCategories<br/>(localStorage, integração pendente)"]
-        LS[("localStorage<br/>token + categories")]
+        UseCat["useCategories<br/>(API /categories)"]
+        LS[("localStorage<br/>token + user")]
         ApiClient["services/api.js<br/>Axios + interceptor JWT"]
 
         Pages --> AuthCtx
         Pages --> UseCat
         Pages --> ApiClient
         AuthCtx --> LS
-        UseCat --> LS
+        UseCat --> ApiClient
     end
 
     subgraph BE["Backend (Node + Express)"]

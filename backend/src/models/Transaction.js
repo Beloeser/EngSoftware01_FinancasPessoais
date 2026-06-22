@@ -7,6 +7,7 @@ const Transaction = sequelize.define('Transaction', {
   amount: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
   type: { type: DataTypes.ENUM('income', 'expense'), allowNull: false },
   date: { type: DataTypes.DATEONLY, allowNull: false },
+  categoryId: { type: DataTypes.INTEGER, allowNull: true },
 })
 
 Transaction.belongsTo(User, { foreignKey: 'userId' })

@@ -6,6 +6,15 @@ vi.mock('../../services/api', () => ({
   default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }))
 
+vi.mock('../../hooks/useCategories', () => ({
+  useCategories: () => ({
+    categories: [
+      { id: 1, name: 'Moradia' },
+      { id: 2, name: 'Lazer' },
+    ],
+  }),
+}))
+
 import api from '../../services/api'
 import Dashboard from './Dashboard'
 
@@ -51,8 +60,43 @@ describe('Dashboard (integração)', () => {
       amount: 1000,
       type: 'income',
       date: '2024-01-10',
+      categoryId: null,
     })
     expect(await screen.findByText('Salário')).toBeInTheDocument()
+  })
+
+  it('cria uma nova transação com categoria', async () => {
+    api.get
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({
+        data: [{
+          id: 99,
+          description: 'Aluguel',
+          amount: 1200,
+          type: 'expense',
+          date: '2024-01-10',
+          categoryId: 1,
+          category: { id: 1, name: 'Moradia' },
+        }],
+      })
+    render(<Dashboard />)
+    await screen.findByText('Nenhuma transação registrada.')
+
+    await userEvent.type(screen.getByPlaceholderText('Descrição *'), 'Aluguel')
+    await userEvent.type(screen.getByPlaceholderText('Valor *'), '1200')
+    fireEvent.change(screen.getByDisplayValue('Entrada'), { target: { value: 'expense' } })
+    fireEvent.change(screen.getByPlaceholderText('Data *'), { target: { value: '2024-01-10' } })
+    fireEvent.change(screen.getByDisplayValue('Categoria (opcional)'), { target: { value: '1' } })
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    expect(api.post).toHaveBeenCalledWith('/transactions', {
+      description: 'Aluguel',
+      amount: 1200,
+      type: 'expense',
+      date: '2024-01-10',
+      categoryId: 1,
+    })
+    expect((await screen.findAllByText(/Moradia/)).length).toBeGreaterThan(0)
   })
 
   it('valida campos obrigatórios e não chama a API', async () => {

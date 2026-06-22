@@ -12,13 +12,13 @@ Implementamos testes em todas as camadas da **pirâmide de testes** (Cap. 8):
 
 | Camada | Ferramenta | Qtde |
 |---|---|---|
-| **Unidade + Integração — Frontend** | Vitest + Testing Library | 73 testes |
-| **Unidade + Integração — Backend** | Vitest + supertest + Postgres | 35 testes |
+| **Unidade + Integração — Frontend** | Vitest + Testing Library | 71 testes |
+| **Unidade + Integração — Backend** | Vitest + supertest + Postgres | 41 testes |
 | **Sistema / E2E** | Cypress (backend real) | 8 testes (4 specs) |
 
 **Cobertura (meta ≥ 80%):**
-- Frontend: **98%** statements · 92% branches · 94% funcs · 98% lines
-- Backend: **95,6%** statements · 83,5% branches · 100% funcs · 95,6% lines
+- Frontend: **98,89%** statements · 93,01% branches · 95,38% funcs · 98,89% lines
+- Backend: **96,66%** statements · 86,04% branches · 100% funcs · 96,66% lines
 
 Princípios seguidos: **FIRST** (rápidos, independentes, determinísticos, autoverificáveis);
 estrutura **contexto → exercício → assert**; **mocks só na unidade**; **integração até o banco**.
@@ -42,21 +42,23 @@ npm run coverage
 ### Teste explicado nº 1 — Unidade (frontend): `useCategories`
 Arquivo: `frontend/src/hooks/useCategories.test.jsx`
 
-Testa o hook que gerencia categorias no `localStorage`. Cobre os ramos de borda:
-adicionar, **ignorar duplicada**, **fazer trim**, ignorar vazio, remover e o **fallback
-quando o JSON do localStorage está corrompido**.
+Testa o hook que gerencia categorias pela API (`/categories`). Cobre os ramos de borda:
+carregar categorias, **ignorar duplicada**, **fazer trim**, ignorar vazio, remover e o
+fallback quando a API falha.
 
 ```js
-it('ignora categoria duplicada', () => {
+it('adiciona uma categoria pela API e atualiza a lista', async () => {
   const { result } = renderHook(() => useCategories())
-  act(() => result.current.addCategory('Lazer'))
-  act(() => result.current.addCategory('Lazer'))
-  expect(result.current.categories).toEqual(['Lazer'])
+  await waitFor(() => expect(result.current.loading).toBe(false))
+  await act(async () => {
+    await result.current.addCategory('Lazer')
+  })
+  expect(api.post).toHaveBeenCalledWith('/categories', { name: 'Lazer' })
 })
 ```
-- **Contexto:** `renderHook` cria o hook isolado.
-- **Exercício:** chama `addCategory` duas vezes com o mesmo nome.
-- **Assert:** a lista continua com um único item.
+- **Contexto:** `renderHook` cria o hook isolado e o `api` é mockado.
+- **Exercício:** chama `addCategory`.
+- **Assert:** a API é chamada corretamente e a lista local do hook é atualizada.
 
 ### Teste explicado nº 2 — Integração (backend): cadastro via API
 Arquivo: `backend/test/integration/auth.test.js` (usa **supertest** + Postgres real)
@@ -139,7 +141,8 @@ _(Preencher com os nomes e tarefas reais do grupo.)_
 - Acelerou a configuração da infra (Vitest, Testing Library, supertest, Cypress) e a
   geração de **casos de borda** abrangentes.
 - Ajudou a **diagnosticar problemas de ambiente**: o `localStorage` global incompleto do
-  Node 25 (resolvido com polyfill no setup) e a porta 5000 ocupada pelo AirPlay no macOS.
+  Node 25 nos testes de sessão (resolvido com polyfill no setup) e a porta 5000 ocupada
+  pelo AirPlay no macOS.
 
 **Pontos negativos / cuidados**
 - O grupo precisou **revisar e entender cada teste** — a IA gera rápido, mas o

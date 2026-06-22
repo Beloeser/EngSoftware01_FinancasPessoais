@@ -10,6 +10,10 @@ function createTransaction(token, data) {
   return request(app).post('/api/transactions').set(authHeader(token)).send(data)
 }
 
+function createCategory(token, name = 'Casa') {
+  return request(app).post('/api/categories').set(authHeader(token)).send({ name })
+}
+
 describe('Transações (integração)', () => {
   let token
   beforeEach(async () => {
@@ -41,6 +45,38 @@ describe('Transações (integração)', () => {
     expect(res.body.userId).toBeDefined()
   })
 
+  it('cria uma transação vinculada a uma categoria do usuário', async () => {
+    const category = await createCategory(token, 'Moradia')
+
+    const res = await createTransaction(token, {
+      description: 'Aluguel',
+      amount: 1200,
+      type: 'expense',
+      date: '2024-01-10',
+      categoryId: category.body.id,
+    })
+
+    expect(res.status).toBe(201)
+    expect(res.body.categoryId).toBe(category.body.id)
+    expect(res.body.category).toMatchObject({ name: 'Moradia' })
+  })
+
+  it('não permite usar categoria de outro usuário', async () => {
+    const { token: outroToken } = await registerUser(app, { email: 'outro@email.com' })
+    const category = await createCategory(outroToken, 'Outro orçamento')
+
+    const res = await createTransaction(token, {
+      description: 'Tentativa',
+      amount: 100,
+      type: 'expense',
+      date: '2024-01-10',
+      categoryId: category.body.id,
+    })
+
+    expect(res.status).toBe(404)
+    expect(res.body.message).toBe('Categoria não encontrada.')
+  })
+
   it('lista somente as transações do usuário, ordenadas por data desc', async () => {
     await createTransaction(token, { description: 'Antiga', amount: 100, type: 'income', date: '2024-01-01' })
     await createTransaction(token, { description: 'Recente', amount: 200, type: 'income', date: '2024-02-01' })
@@ -58,6 +94,36 @@ describe('Transações (integração)', () => {
     const res = await request(app).get('/api/transactions?type=expense').set(authHeader(token))
     expect(res.body).toHaveLength(1)
     expect(res.body[0].type).toBe('expense')
+  })
+
+  it('filtra transações por categoria', async () => {
+    const casa = await createCategory(token, 'Casa')
+    const lazer = await createCategory(token, 'Lazer')
+    await createTransaction(token, {
+      description: 'Aluguel',
+      amount: 1000,
+      type: 'expense',
+      date: '2024-01-10',
+      categoryId: casa.body.id,
+    })
+    await createTransaction(token, {
+      description: 'Cinema',
+      amount: 80,
+      type: 'expense',
+      date: '2024-01-12',
+      categoryId: lazer.body.id,
+    })
+
+    const res = await request(app)
+      .get(`/api/transactions?categoryId=${lazer.body.id}`)
+      .set(authHeader(token))
+
+    expect(res.body).toHaveLength(1)
+    expect(res.body[0]).toMatchObject({
+      description: 'Cinema',
+      categoryId: lazer.body.id,
+      category: { name: 'Lazer' },
+    })
   })
 
   it('filtra transações a partir de uma data (startDate)', async () => {
@@ -98,6 +164,31 @@ describe('Transações (integração)', () => {
       .send({ description: 'Atualizada', amount: 75, type: 'income', date: '2024-01-10' })
     expect(res.status).toBe(200)
     expect(res.body.description).toBe('Atualizada')
+  })
+
+  it('atualiza a categoria da própria transação', async () => {
+    const category = await createCategory(token, 'Mercado')
+    const created = await createTransaction(token, {
+      description: 'Compra',
+      amount: 50,
+      type: 'expense',
+      date: '2024-01-10',
+    })
+
+    const res = await request(app)
+      .put(`/api/transactions/${created.body.id}`)
+      .set(authHeader(token))
+      .send({
+        description: 'Compra',
+        amount: 50,
+        type: 'expense',
+        date: '2024-01-10',
+        categoryId: category.body.id,
+      })
+
+    expect(res.status).toBe(200)
+    expect(res.body.categoryId).toBe(category.body.id)
+    expect(res.body.category.name).toBe('Mercado')
   })
 
   it('não permite editar transação de outro usuário (404)', async () => {

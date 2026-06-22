@@ -14,7 +14,7 @@ Documentação preliminar do sistema em UML, em formato Mermaid (markdown). Cada
 
 ## 1. Diagrama de Casos de Uso
 
-Mostra as funcionalidades disponíveis para o usuário e dependências entre elas (`include`). O caso em amarelo (**Categorizar transação**) está marcado como *integração pendente*: a entidade `Category` já existe no backend (`/api/categories`), mas o frontend ainda usa `localStorage` no `useCategories` e ainda não vincula `categoryId` nas transações via API.
+Mostra as funcionalidades disponíveis para o usuário e dependências entre elas (`include`). As categorias são persistidas no backend (`/api/categories`) e podem ser vinculadas às transações por `categoryId`.
 
 ```mermaid
 graph LR
@@ -30,7 +30,7 @@ graph LR
     User --> UC8[Ver resumo financeiro]
     User --> UC9[Cadastrar categoria]
     User --> UC10[Listar categorias]
-    User --> UC11[Categorizar transação]:::pending
+    User --> UC11[Categorizar transação]
     User --> UC12[Ver dashboard com gráficos]
     User --> UC13[Exportar PDF]
 
@@ -44,14 +44,12 @@ graph LR
     UC10 -.->|include| UC2
     UC12 -.->|include| UC3
     UC13 -.->|include| UC3
-
-    classDef pending fill:#fff3cd,stroke:#e0a800,color:#333
 ```
 
 **Legenda**:
 - Setas contínuas: associação ator–caso de uso.
 - Setas tracejadas `include`: o caso de origem depende do caso de destino (ex.: para listar transações é preciso estar logado).
-- Amarelo: caso de uso com **integração frontend–backend pendente**.
+- Categorizar transação usa a relação persistida `Transaction.categoryId -> Category.id`.
 
 ---
 
@@ -77,6 +75,7 @@ classDiagram
         +Enum type
         +Date date
         +Integer userId
+        +Integer categoryId
     }
 
     class Category {
@@ -103,6 +102,7 @@ classDiagram
     class CategoryController {
         +create(req, res, next)
         +getAll(req, res, next)
+        +remove(req, res, next)
     }
 
     class PdfService {
@@ -125,6 +125,7 @@ classDiagram
 
     User "1" --> "0..*" Transaction : possui
     User "1" --> "0..*" Category : possui
+    Category "1" --> "0..*" Transaction : classifica
     AuthController ..> User
     AuthController ..> JwtUtils
     AuthController ..> CryptoUtils
@@ -135,7 +136,7 @@ classDiagram
 ```
 
 **Legenda**:
-- `1 — 0..*`: cardinalidade (um usuário possui várias transações e várias categorias).
+- `1 — 0..*`: cardinalidade (um usuário possui várias transações/categorias, e uma categoria pode classificar várias transações).
 - Setas tracejadas (`..>`): dependência (uma classe usa outra).
 - Não há classes `*Service` para auth/user/transaction — esses controllers conversam com Sequelize diretamente.
 
@@ -143,7 +144,7 @@ classDiagram
 
 ## 3. Diagrama de Componentes / Arquitetura
 
-Mostra os módulos do sistema e como eles se comunicam. O frontend conversa com o backend via HTTP + JWT; o backend persiste em PostgreSQL via Sequelize; o `pdfService` é invocado apenas pelo `TransactionController` no fluxo de exportação. `useCategories` no frontend ainda lê/escreve em `localStorage` (a integração com `/api/categories` está pendente).
+Mostra os módulos do sistema e como eles se comunicam. O frontend conversa com o backend via HTTP + JWT; o backend persiste em PostgreSQL via Sequelize; o `pdfService` é invocado apenas pelo `TransactionController` no fluxo de exportação. `useCategories` busca e persiste categorias pela API (`/api/categories`); o `localStorage` fica restrito aos dados de sessão.
 
 ```mermaid
 graph LR
@@ -152,15 +153,15 @@ graph LR
     subgraph FE["Frontend (React + Vite)"]
         Pages["Pages<br/>Login · Register · Dashboard<br/>VisaoGeral · Categories"]
         AuthCtx["AuthContext<br/>useAuth"]
-        UseCat["useCategories<br/>(localStorage, integração pendente)"]
-        LS[("localStorage<br/>token + categories")]
+        UseCat["useCategories<br/>(API /categories)"]
+        LS[("localStorage<br/>token + user")]
         ApiClient["services/api.js<br/>Axios + interceptor JWT"]
 
         Pages --> AuthCtx
         Pages --> UseCat
         Pages --> ApiClient
         AuthCtx --> LS
-        UseCat --> LS
+        UseCat --> ApiClient
     end
 
     subgraph BE["Backend (Node + Express)"]
@@ -187,7 +188,7 @@ graph LR
 
 **Legenda**:
 - Caixas com cantos retos: componentes de software.
-- Cilindros: armazenamento (banco ou `localStorage`).
+- Cilindros: armazenamento (`PostgreSQL` para dados do domínio; `localStorage` só para sessão).
 - Setas contínuas: fluxo de chamada/dependência.
 - Setas tracejadas: orquestração de infraestrutura ou caminho secundário (geração de PDF).
 - O JWT é injetado automaticamente em todas as requisições autenticadas pelo interceptor do Axios em `frontend/src/services/api.js`.

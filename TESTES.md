@@ -18,14 +18,14 @@ estrutura **contexto → exercício → assert**; **mocks apenas na unidade**; i
 
 ## Resultados de cobertura (meta do TP2: ≥ 80%)
 
-**Frontend** — 73 testes (19 arquivos):
+**Frontend** — 71 testes (20 arquivos):
 ```
-Statements 98%   Branches 92.2%   Functions 93.9%   Lines 98%
+Statements 98.89%   Branches 93.01%   Functions 95.38%   Lines 98.89%
 ```
 
-**Backend** — 35 testes (6 arquivos):
+**Backend** — 41 testes (6 arquivos):
 ```
-Statements 95.6%   Branches 83.5%   Functions 100%   Lines 95.6%
+Statements 96.66%   Branches 86.04%   Functions 100%   Lines 96.66%
 ```
 
 **E2E (Cypress)** — 8 testes em 4 specs (`login`, `transacoes`, `categorias`, `visao-geral`): todos verdes.
@@ -94,7 +94,7 @@ JWT_SECRET=um_segredo
 ```
 frontend/
   vite.config.js                 # bloco test + cobertura (thresholds 80%)
-  src/test/setup.js              # setup (jest-dom, limpeza de localStorage)
+  src/test/setup.js              # setup (jest-dom, localStorage fake para sessão)
   src/**/*.test.{js,jsx}         # testes co-localizados com o código
   cypress/
     cypress.config.js
@@ -130,7 +130,7 @@ backend/
 **Pontos positivos**
 - Aceleração na configuração da infra (Vitest, Testing Library, supertest, Cypress, mocks)
   e na geração de casos de borda abrangentes (validações, isolamento por usuário, JSON
-  corrompido, token ausente/ inválido, filtros de data, etc.).
+  falha de API, token ausente/ inválido, filtros de data/categoria, etc.).
 - Diagnóstico de problemas de ambiente: o **Node 25 expõe um `localStorage` global
   incompleto** (resolvido com polyfill no setup) e a **porta 5000 ocupada pelo AirPlay**.
 - Boa aderência aos conceitos do capítulo (pirâmide, FIRST, mocks só na unidade,

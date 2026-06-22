@@ -2,7 +2,7 @@ import { createContext, useState } from 'react'
 import api from '../services/api'
 
 export const AuthContext = createContext(null)
-const SESSION_STORAGE_KEYS = ['token', 'user', 'categories', 'transactionCategories']
+const SESSION_STORAGE_KEYS = ['token', 'user']
 
 function loadStoredUser() {
   const token = localStorage.getItem('token')
